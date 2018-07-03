@@ -1,0 +1,93 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0,maximum-scale=1.0, user-scalable=no" charset="utf-8"/>
+
+		<!--css-->
+		<!--link rel="stylesheet" type="text/css" href="css/style.css"-->
+		<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+
+		<!--js-->
+		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+		<script type="text/javascript" src="https://cdn.bootcss.com/json2/20160511/json2.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/echarts-all-3.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts-stat/ecStat.min.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/dataTool.min.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/china.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/world.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/bmap.min.js"></script>		
+		<title>微灵果</title>
+		<script type="text/javascript">
+			$.ajaxSetup({
+				async : false
+			});
+
+			function makeMembers(classInfo) {
+				if(classInfo.hasOwnProperty("member_list")) {
+					var children_div = document.getElementById("student_div");
+					var jstr_member = classInfo['member_list']
+					var jmember = eval('(' + jstr_member + ')');
+					for(var i in jmember) {
+						var studentID = jmember[i].id;
+						$.get("/get_childinfo_simple?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&uid="+studentID, function(data, status) {
+							var jData = JSON.parse(data)
+							//console.log(jData.childInfo)
+
+							var studentName = jData.childInfo['name']
+							var studentCName=jData.childInfo['cname']
+							var studentSex = jData.childInfo['sex']
+							var uh = jData.childInfo["homework_user"]
+							var th = jData.childInfo["homework_total"]
+							console.log(uh, th);
+							
+							//添加列表中箭头按钮
+							newListBtn=document.createElement("div");
+							newListBtn.id = studentID
+							newListBtn.setAttribute("class","sl_btn cl_btn");
+							children_div.appendChild(newListBtn);
+
+							//添加内容部分
+							newList = document.createElement("div");
+							newList.setAttribute("class","content"); 
+						
+							if(0 == studentSex) {
+								newList.innerHTML = "<table class='stu_table'><tr><td style='width:85px'>"+studentName+"</td><td style='width:75px'>"+studentCName+"</td><td>男生</td><td>作业:"+uh+"/"+th+"</td></tr></table>";
+							}
+							else {
+								newList.innerHTML = "<table class='stu_table'><tr><td style='width:85px'>"+studentName+"</td><td style='width:75px'>"+studentCName+"</td><td>女生</td><td>作业:"+uh+"/"+th+"</td></tr></table>";
+							}
+
+							newListBtn.addEventListener("click", function() {
+								console.log(this.id, "onclick")
+								window.location.href = "/user_page?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&uid="+this.id+"&uname="+studentName
+							});
+							children_div.appendChild(newList);
+						});
+					}
+				}
+			}
+
+			$(document).ready(function() {
+				$.get("/get_classinfo?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&cid={{classid}}", function(data, status){
+					var jData = JSON.parse(data)
+					makeMembers(jData.classInfo)
+				});
+
+				$(".btnViewClass").click(function() {
+					console.log("跳转到class_data");
+					window.location.href = "/class_data?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&cid={{classid}}&cname={{cname}}&membercount={{membercount}}"
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div id="fit-shell" class="mainContainer homework_mainbackground">
+			<div id="Child-info" class="header">
+				<div id="total-name">{{cname}}&nbsp;&nbsp;({{membercount}}人)</div>
+			</div>
+			<div id="student_div"></div>
+			<div class="footer">
+				<button id="btnViewClass" class="btnViewClass">查看班级</button>
+			</div>
+		</div>	
+	</body>
+</html>

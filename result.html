@@ -1,0 +1,38 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0,maximum-scale=1.0, user-scalable=no" charset="utf-8"/>
+		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+		<title>登录结果</title>
+		<script>
+			$.ajaxSetup({
+				async : false
+			});
+			
+			var displayImg = "{{needqrcode}}";
+			$(document).ready(function() {
+				if(displayImg > 0) {
+					var qr = document.getElementById("qrcode");
+					qr.style.display = "";
+				}
+				
+				var height = document.body.scrollHeight;
+				var width = document.body.scrollWidth;
+			　　var logo_wrap = document.getElementById("logo_wrap");
+				var margin_top = (height-100)/2 - 215;
+				logo_wrap.style.marginTop = margin_top + "px";
+				var margin_left = (width)/2 - 215;
+				logo_wrap.style.marginLeft = margin_left + "px";
+			});
+		</script>
+		</script>
+	</head>
+	<body bgcolor="black">
+		<div class="mui-content">
+			<div id="logo_wrap">
+				<font size="8" color="white" align="center">{{message}}</font>
+				<br>
+				<img id="qrcode" class="qrcode" align="center" style="display:none" src="http://r.welingo.cn/img/publicWX.jpg" />
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,885 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0,maximum-scale=1.0, user-scalable=no" charset="utf-8"/>
+
+		<!--css-->
+		<!--link rel="stylesheet" type="text/css" href="css/style.css"-->
+		<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+
+		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+		<script type="text/javascript" src="https://cdn.bootcss.com/json2/20160511/json2.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/echarts-all-3.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts-stat/ecStat.min.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/dataTool.min.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/china.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/world.js"></script>
+		<script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/bmap.min.js"></script>		
+		<title>班级数据</title>
+		<script type="text/javascript">
+			var oneDay = 1000*3600*24
+			var oneWeek = oneDay*7
+			var oneMonth = oneDay*30
+			
+			Date.prototype.Format = function (fmt) {
+				var o = {
+					"M+": this.getMonth() + 1, //月份 
+					"d+": this.getDate(), //日 
+					"h+": this.getHours(), //小时 
+					"m+": this.getMinutes(), //分 
+					"s+": this.getSeconds(), //秒 
+					"q+": Math.floor((this.getMonth() + 3) / 3), //季度 
+					"S": this.getMilliseconds() //毫秒 
+				};
+				if (/(y+)/.test(fmt)) fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
+				for (var k in o)
+				if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+				return fmt;
+			}
+			
+			function getDateofThePast(deltaTime) {
+				var curDate = new Date();
+				var curMS = curDate.getTime();
+				var fromMS = curMS - deltaTime;
+				var fromDate = new Date(fromMS);
+				return fromDate
+			}
+			
+			function getTimeofThePast(deltaTime) {
+				var curDate = new Date();
+				var curMS = curDate.getTime();
+				var fromMS = curMS - deltaTime
+				return fromMS
+			}
+		</script>
+		<script type="text/javascript">
+			$.ajaxSetup({
+				async : false
+			});
+			
+			function getStudentLog(date, sid, typeid, cname_array) {
+				var param = "date="+date+"&typeid="+typeid+"&colname="+JSON.stringify(cname_array)
+				var jdata = null
+				$.get("/get_childLog?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&uid="+sid+"&"+param, function(data, status) {
+					jData = JSON.parse(data)
+				});
+				return jData["childLog"]
+			}
+			
+			function makeMembers(classInfo) {
+				if(classInfo.hasOwnProperty("member_list")) {
+					var children_div = document.getElementById("student_div");
+					var jstr_member = classInfo['member_list']
+					var jmember = eval('(' + jstr_member + ')');
+					for(var i in jmember) {
+						var studentID = jmember[i].id;
+						$.get("/get_childinfo_simple?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&uid="+studentID, function(data, status) {
+							var jData = JSON.parse(data)
+							var studentName = jData.childInfo['name']
+							var studentSex = jData.childInfo['sex']
+							
+							newBtn = document.createElement("button");
+							//console.log(studentID, studentName, studentSex)
+							newBtn.id = studentID
+							newBtn.style = "width:auto;height:40px;font-size:14px"
+							if(0 == studentSex) {
+								newBtn.innerHTML = studentName+' 男生 ';
+							}
+							else {
+								newBtn.innerHTML = studentName+' 女生 ';
+							}
+							newBtn.addEventListener("click", function() {
+								console.log(this.id, "onclick")
+								window.location.href = "/user_page?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&uid="+this.id+"&uname="+studentName
+							});
+							children_div.appendChild(newBtn);
+						});
+					}
+				}
+			}
+			
+			$(document).ready(function() {
+				$.get("/get_classinfo?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&cid={{classid}}", function(data, status){
+					var jData = JSON.parse(data)
+					//makeMembers(jData.classInfo)
+					showAbility(jData.cStatistics);
+					showCalendar(jData.cStatistics);
+					getStudyProgress(jData.classInfo, jData.cStatistics);
+					showDataAnalyse(jData.cStatistics);
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<div class="mainContainer homework_mainbackground">
+			<div class="header">
+				<div id="total-name">
+			{{cname}}({{membercount}}人)</div>
+		</div>
+			<div id="fit-shell">
+				<div id="Child-info">
+					<div class="class_content">
+					<div id="class_id">班级名称：{{classid}}</div>
+					<div id="class_year" style="font-size: 18px">{{start_year}}级</div>
+					<div id="class_outline" style="font-size: 18px">{{outlineName}}</div>
+				</div>
+			</div>
+			<div class="content" style="padding-left: 0px;padding-top: 20px">
+				<div id="Child-info-calendar">
+				</div>
+			</div>
+			<div class="content" style="padding-left: 0px">
+				<div id="Child-info-ability"></div>
+			</div>
+
+			<div class="content" style="padding-left: 0px">
+				<div class="Progress-Title">学习进度</div>
+				<div id="Study-Progress">
+					<div id="Progress-Shell"></div>
+				</div>
+			</div>
+			
+			<div class="content" style="padding-left: 0px">
+				<div id="Analyse-Title" class="Progress-Title">数据分析</div>
+				<div id="Data-Analyse"/></div>
+				<div id="Analyse-Shell"/>
+				</div>
+				<br/>
+				<br/>
+			</div>
+		</div>
+		<!--数据分析-->
+		<script type="text/javascript">
+			function formatBarGraph(id, title, dateArray_json, rights, errors, rates) {
+				var pshell = document.getElementById('Analyse-Shell')
+
+				//var dtitle = document.createElement("DIV")
+				//dtitle.innerHTML = title
+				//pshell.appendChild(dtitle)
+
+				var dchild = document.createElement("DIV")
+				dchild.setAttribute("class","Data_content")
+				dchild.id = id+1
+				pshell.appendChild(dchild)
+
+				var mychart = echarts.init(dchild)
+				var colors = ['#5793f3', '#d14a61', '#675bba'];
+				//console.log(id+1, title, dateArray_json, rights, errors, rates)
+				mychart.setOption({
+					title: {
+						text: title,
+						y:20,
+						left:'center',
+						textStyle:{
+							fontFamily:'Microsoft YaHei'
+						}
+					},
+					color: colors,
+					tooltip: {
+						trigger: 'axis',
+						axisPointer: {
+							type: 'cross'
+						}
+					},
+					grid: {
+						left:55
+					},
+					toolbox: {
+						feature: {
+							//dataView: {show: true, readOnly: false},
+							//restore: {show: true},
+							//saveAsImage: {show: true}
+						}
+					},
+					legend: {
+						data:['正确','错误','平均正确率'],
+						x:'center',
+						y:'bottom'
+					},
+					xAxis: [
+						{
+							type: 'category',
+							axisTick: {
+								alignWithLabel: true
+							},
+							data: dateArray_json
+						}
+					],
+					yAxis: [
+						{
+							type: 'value',
+							name: '正确',
+							min: 0,
+							position: 'right',
+							axisLine: {
+								lineStyle: {
+									color: colors[0]
+								}
+							},
+							axisLabel: {
+								textStyle: {
+									fontSize: 15
+								}
+							}
+						},
+						{
+							type: 'value',
+							name: '错误',
+							min: 0,
+							position: 'right',
+							offset: 100,
+							axisLine: {
+								lineStyle: {
+									color: colors[1]
+								}
+							},
+							axisLabel: {
+								formatter: '{value}题',
+								textStyle: {
+									fontSize: 15
+								}
+							}
+						},
+						{
+							type: 'value',
+							name: '正确率',
+							min: 0,
+							max: 100,
+							position: 'left',
+							axisLine: {
+								lineStyle: {
+									color: colors[2]
+								}
+							},
+							axisLabel: {
+								formatter: '{value}%',
+								textStyle: {
+									fontSize: 15
+								}
+							}
+						}
+					],
+					series: [
+						{
+							name:'正确',
+							type:'bar',
+							data:rights
+						},
+						{
+							name:'错误',
+							type:'bar',
+							yAxisIndex: 1,
+							data:errors
+						},
+						{
+							name:'平均正确率',
+							type:'line',
+							yAxisIndex: 2,
+							data:rates
+						}
+					],
+					textStyle: {
+						fontSize: 15
+					}
+				});
+			};
+				
+			function showDataAnalyse(uStatistics) {
+				var myDate1 = getDateofThePast(oneMonth)
+				var myDate2 = new Date()
+				var s1 = myDate1.getTime();
+				var s2 = myDate2.getTime();
+				
+				var affixAbility = "ByAbility-"
+				var affixClasses = "ByClasses-"
+				var affixGrammarClasses = "ByGrammarClasses-"
+				
+				var titleMap = new Map();
+				titleMap.set('听力类', 0)
+				titleMap.set('口语类', 1)
+				titleMap.set('阅读类', 2)
+				titleMap.set('拼写类', 3)
+				titleMap.set('单词类', 4)
+				titleMap.set('词组类', 5)
+				titleMap.set('句型类', 6)
+				titleMap.set('语法类', 7)
+				
+				var dateArray = new Array()
+				var rights = new Array()
+				var errors = new Array()
+				var rates = new Array()
+				for (var x of titleMap) {
+					dateArray[x[1]] = new Array()
+					rights[x[1]] = new Array()
+					errors[x[1]] = new Array()
+					rates[x[1]] = new Array()
+				}
+				
+				for(var key in uStatistics) {
+					var pos = key.indexOf(affixAbility);
+					if(-1 == pos) continue
+					var recoderDate = key.substring(affixAbility.length, key.length)
+					var recoder_date = new Date(recoderDate.replace(/\-/g, "/") + ' 00:00:01')
+					var recoder_tick = recoder_date.getTime();
+					if(recoder_tick >= s1 && recoder_tick < s2) {
+						var jstring = uStatistics[key]
+						var recoderDay = recoderDate.substring(recoderDate.length-2, recoderDate.length)
+						var dateStatistics = eval('(' + jstring + ')')
+						if(dateStatistics.hasOwnProperty('listen')) {
+							var jObj = dateStatistics.listen
+							dateArray[0].push(recoderDay)
+							rights[0].push(jObj.right)
+							errors[0].push(jObj.error)
+							rates[0].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+						if(dateStatistics.hasOwnProperty('speak')) {
+							var jObj = dateStatistics.speak
+							dateArray[1].push(recoderDay)
+							rights[1].push(jObj.right)
+							errors[1].push(jObj.error)
+							rates[1].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+						if(dateStatistics.hasOwnProperty('understand')) {
+							var jObj = dateStatistics.understand
+							dateArray[2].push(recoderDay)
+							rights[2].push(jObj.right)
+							errors[2].push(jObj.error)
+							rates[2].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+						if(dateStatistics.hasOwnProperty('spell')) {
+							var jObj = dateStatistics.spell
+							dateArray[3].push(recoderDay)
+							rights[3].push(jObj.right)
+							errors[3].push(jObj.error)
+							rates[3].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+					}
+					
+					var pos = key.indexOf(affixClasses);
+					if(-1 == pos) continue
+					var recoderDate = key.substring(affixClasses.length, key.length)
+					var recoder_date = new Date(recoderDate.replace(/\-/g, "/") + ' 00:00:01')
+					var recoder_tick = recoder_date.getTime();
+					if(recoder_tick >= s1 && recoder_tick < s2) {
+						var recoderDay = recoderDate.substring(recoderDate.length-2, recoderDate.length)
+						var jstring = uStatistics[key]
+						var dateStatistics = eval('(' + jstring + ')')
+						if(dateStatistics.hasOwnProperty('word')) {
+							var jObj = dateStatistics.word
+							dateArray[4].push(recoderDay)
+							rights[4].push(jObj.right)
+							errors[4].push(jObj.error)
+							rates[4].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+						if(dateStatistics.hasOwnProperty('phrase')) {
+							var jObj = dateStatistics.phrase
+							dateArray[5].push(recoderDay)
+							rights[5].push(jObj.right)
+							errors[5].push(jObj.error)
+							rates[5].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+						if(dateStatistics.hasOwnProperty('sentence')) {
+							var jObj = dateStatistics.sentence
+							dateArray[6].push(recoderDay)
+							rights[6].push(jObj.right)
+							errors[6].push(jObj.error)
+							rates[6].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+					}
+					
+					var pos = key.indexOf(affixGrammarClasses);
+					if(-1 == pos) continue
+					var recoderDate = key.substring(affixGrammarClasses.length, key.length)
+					var recoder_date = new Date(recoderDate.replace(/\-/g, "/") + ' 00:00:01')
+					var recoder_tick = recoder_date.getTime();
+					if(recoder_tick >= s1 && recoder_tick < s2) {
+						var recoderDay = recoderDate.substring(recoderDate.length-2, recoderDate.length)
+						var jstring = uStatistics[key]
+						var dateStatistics = eval('(' + jstring + ')')
+						if(dateStatistics.hasOwnProperty('total')) {
+							var jObj = dateStatistics.total
+							dateArray[7].push(recoderDay)
+							rights[7].push(jObj.right)
+							errors[7].push(jObj.error)
+							rates[7].push(parseFloat(jObj.right)/(jObj.right+jObj.error)*100)
+						}
+					}
+				}
+				
+				for (var x of titleMap) {
+					var tmpDate = dateArray[x[1]]
+					//console.log(typeof(tmpDate), tmpDate, tmpDate.length)
+					if(tmpDate.length > 0) {
+						formatBarGraph(x[1], x[0], dateArray[x[1]], rights[x[1]], errors[x[1]], rates[x[1]])
+					}
+				}
+			}
+		</script>
+		<!--显示日历-->
+		<script type="text/javascript">
+			function getVirtulData(date_from, date_to) {
+				var date = +echarts.number.parseDate(date_from.Format("yyyy-MM-dd"));
+				var end = +echarts.number.parseDate(date_to.Format("yyyy-MM-dd"));
+				var dayTime = 3600 * 24 * 1000;
+				var data = [];
+				for (var time = date; time < end; time += dayTime) {
+					data.push([
+						echarts.format.formatTime('yyyy-MM-dd', time),
+						Math.floor(Math.random() * 10000)
+					]);
+					//console.log(echarts.format.formatTime('yyyy-MM-dd', time))
+				}
+				return data;
+			}
+
+			function getPieSeries(scatterData, pieRadius, chart, date_from, date_to, uStatistics) {
+				return echarts.util.map(scatterData, function (item, index) {
+					var currentTime = date_from.getTime() + index * oneDay
+					var currentDate = new Date(currentTime)
+					var currentDateString = currentDate.Format("yyyy-MM-dd")
+					var center = chart.convertToPixel('calendar', item);
+					var dateKey = "ByDate-" + currentDateString
+					if (uStatistics.hasOwnProperty(dateKey)) {
+						var jstring = uStatistics[dateKey]
+						var myData = eval('(' + jstring + ')')
+						var returnData = {
+							id: index + 'pie',
+							type: 'pie',
+							center: center,
+							label: {
+								normal: {
+									formatter: '{c}',
+									position: 'inside'
+								}
+							},
+							radius: pieRadius,
+							data: [
+								{name: '答对', value: myData.right},
+								{name: '答错', value: myData.error}
+							]
+						};
+						return returnData;
+					} else {
+						var returnData = {
+							id: index + 'pie',
+							type: 'pie',
+							center: center
+						};
+						return returnData;
+					};
+				});
+			}
+
+			function getPieSeriesUpdate(scatterData, pieRadius, chart, date_from, date_to, uStatistics) {
+				return echarts.util.map(scatterData, function (item, index) {
+					var center = chart.convertToPixel('calendar', item);
+					return {
+						id: index + 'pie',
+						center: center
+					};
+				});
+			}
+			
+			function showCalendar(uStatistics) {
+				var Child_info_calendar = document.getElementById("Child-info-calendar");
+				var myChart_calendar = echarts.init(Child_info_calendar);
+				var app = {};
+				var cellSize = [45, 45];
+				var pieRadius = 18;
+				var myDate1 = getDateofThePast(oneMonth)
+				var myDate2 = new Date()
+				var fromMonth = myDate1.Format("yyyy-MM")
+				var toMonth = myDate2.Format("yyyy-MM-dd")
+				var toMonth2 = myDate2.Format("yyyy-MM");
+				var theDateTitle= fromMonth + " -- " + toMonth2;
+
+				//var theDateTitle = Child_info_calendar.children[0];
+				
+				var scatterData = getVirtulData(myDate1, myDate2);
+				var option = {
+					tooltip : {},
+					legend: {
+						data: ['答对', '答错'],
+						bottom: 20,
+						textStyle: {
+							fontSize: 14
+						}
+					},
+					title:{
+						top:2,
+						text:theDateTitle,
+						left:'center'
+					},
+					calendar: {
+						top: 'middle',
+						left: 'center',
+						orient: 'vertical',
+						cellSize: cellSize,
+						yearLabel: {
+							show: false,
+							textStyle: {
+								fontSize: 14
+							}
+						},
+						dayLabel: {
+							margin: 20,
+							firstDay: 1,
+							nameMap: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'],
+							textStyle: {
+								fontSize: 14
+							}
+						},
+						monthLabel: {
+							show: false
+						},
+						range: [fromMonth, toMonth]
+					},
+					series: [{
+						id: 'label',
+						type: 'scatter',
+						coordinateSystem: 'calendar',
+						symbolSize: 1,
+						label: {
+							normal: {
+								show: true,
+								formatter: function (params) {
+									return echarts.format.formatTime('dd', params.value[0]);
+								},
+								offset: [-cellSize[0] / 2 + 10, -cellSize[1] / 2 + 10],
+								textStyle: {
+									color: '#000',
+									fontSize: 14
+								}
+							}
+						},
+						data: scatterData
+					}]
+				};
+
+				if (!app.inNode) {
+					var pieInitialized;
+					setTimeout(function () {
+						pieInitialized = true;
+						myChart_calendar.setOption({
+							series: getPieSeries(scatterData, pieRadius, myChart_calendar, myDate1, myDate2, uStatistics)
+						});
+					}, 10);
+
+					app.onresize = function () {
+						if (pieInitialized) {
+							myChart_calendar.setOption({
+								series: getPieSeriesUpdate(scatterData, pieRadius, myChart_calendar, myDate1, myDate2, uStatistics)
+							});
+						}
+					};
+				};
+				if (option && typeof option === "object") {
+					myChart_calendar.setOption(option, true);
+				}
+			}
+		</script>
+		<!--雷达图-->
+		<script type="text/javascript">
+			function showAbility(uStatistics) {
+				var affixDate = "score-"
+				var vaild_student_count = 0;
+				var student_ability_map = new Map()
+				for(var key in uStatistics) {
+					var pos = key.indexOf(affixDate);
+					if(-1 == pos) continue
+					var studentName = key.substring(affixDate.length, key.length)
+					var jstring = uStatistics[key]
+					var jstudent = eval('(' + jstring + ')')
+					if(jstudent.hasOwnProperty('score-word')) {
+						var student_ability = new Array()
+						var listen = (jstudent['score-listen']+1)/2
+						var speak = (jstudent['score-speak']+1)/2
+						var understand = (jstudent['score-understand']+1)/2
+						var spell = (jstudent['score-spell']+1)/2
+						var word = (jstudent['score-word']+1)/2
+						var phrase = (jstudent['score-phrase']+1)/2
+						var sentence = (jstudent['score-sentence']+1)/2
+						var grammar = (jstudent['score-grammar']+1)/2
+						var total = listen+speak+understand+spell+word+phrase+sentence+grammar
+						var mean = total/8.0
+						student_ability.push(listen)
+						student_ability.push(speak)
+						student_ability.push(understand)
+						student_ability.push(spell)
+						student_ability.push(word)
+						student_ability.push(phrase)
+						student_ability.push(sentence)
+						student_ability.push(grammar)
+						student_ability.push(total)
+						student_ability.push(mean)
+						student_ability_map.set(studentName, student_ability)
+						vaild_student_count = vaild_student_count + 1
+					}
+				}
+				
+				if(0 >= vaild_student_count) {
+					console.log('student_ability_map is empty?');
+					return;
+				}
+				
+				var maxStudentName = ''
+				var maxStudent = new Array();
+				var minStudentName = ''
+				var minStudent = new Array();
+				var meanClass = new Array();
+				for(var i=0; i<8; i++) {
+					maxStudent.push(0.0);
+					minStudent.push(0.0);
+					meanClass.push(0.0);
+				}
+				
+				var tmpMax=-1.0;
+				var tmpMin=1.0;
+				student_ability_map.forEach(function (value, key, map) {
+					//console.log(key, value);
+					if(value[9] > tmpMax) {
+						maxStudentName = key;
+						tmpMax = value[9];
+					}
+					if(value[9] < tmpMin) {
+						minStudentName = key;
+						tmpMin = value[9];
+					}
+					for(var i=0; i<8; i++) {
+						meanClass[i] = meanClass[i] + value[i];
+					}
+				})
+				
+				//console.log('maxStudentName is', maxStudentName)
+				//console.log('minStudentName is', minStudentName)
+				var maxOne = student_ability_map.get(maxStudentName);
+				var minOne = student_ability_map.get(minStudentName);
+				for(var i=0; i<8; i++) {
+					maxStudent[i] = maxOne[i];
+					minStudent[i] = minOne[i];
+					//console.log(meanClass[i], vaild_student_count)
+					meanClass[i] = meanClass[i] / vaild_student_count;
+					//console.log(meanClass[i])
+				}
+
+				var option = {
+					title: {
+						text: '学生能力分析',
+						y:20,
+						left:'center',
+						textStyle:{
+							fontFamily:'Microsoft YaHei'
+						}
+					},
+					legend: {
+						data: ['平均',maxStudentName,minStudentName],
+						x:'center',
+						y:'bottom'
+					},
+					radar: [
+						{
+							indicator: [
+								{ text: '听力', max: 1.0 },
+								{ text: '口语', max: 1.0 },
+								{ text: '阅读', max: 1.0 },
+								{ text: '拼写', max: 1.0 },
+								{ text: '词汇量', max: 1.0 },
+								{ text: '词组', max: 1.0 },
+								{ text: '句型', max: 1.0 },
+								{ text: '语法', max: 1.0 }
+							],
+							center: ['50%', '50%'],
+							radius: 80,
+							startAngle: 90,
+							splitNumber: 8,
+							shape: 'circle',
+							name: {
+								formatter:'【{value}】',
+								textStyle: {
+									color:'#72ACD1',
+									fontSize: 18
+								}
+							},
+							splitArea: {
+								areaStyle: {
+									color: ['rgba(114, 172, 209, 0.2)',
+									'rgba(114, 172, 209, 0.4)', 'rgba(114, 172, 209, 0.6)',
+									'rgba(114, 172, 209, 0.8)', 'rgba(114, 172, 209, 1)'],
+									shadowColor: 'rgba(0, 0, 0, 0.3)',
+									shadowBlur: 10
+								}
+							},
+							axisLine: {
+								lineStyle: {
+									color: 'rgba(255, 255, 255, 0.5)'
+								}
+							},
+							splitLine: {
+								lineStyle: {
+									color: 'rgba(255, 255, 255, 0.5)'
+								}
+							}
+						}
+					],
+					series: [
+						{
+							name: '雷达图',
+							type: 'radar',
+							itemStyle: {
+								emphasis: {
+									lineStyle: {
+										width: 4
+									}
+								}
+							},
+							data: [
+								{
+									value: meanClass,
+									name: '平均',
+									areaStyle: {
+										normal: {
+											color: 'rgba(255, 255, 255, 0.5)'
+										}
+									}
+								},
+								{
+									value: maxStudent,
+									name: maxStudentName,
+									areaStyle: {
+										normal: {
+											color: 'rgba(255, 255, 255, 0.5)'
+										}
+									}
+								},
+								{
+									value: minStudent,
+									name: minStudentName,
+									areaStyle: {
+										normal: {
+											color: 'rgba(255, 255, 255, 0.5)'
+										}
+									}
+								}
+							]
+						}
+					]
+				};
+
+				var myChart_ability = echarts.init(document.getElementById('Child-info-ability'));
+				//myChart_ability.showLoading({text: '正在读取数据中...'  });
+				myChart_ability.setOption(option);
+				//myChart_ability.hideLoading();
+			};
+		</script>
+		<!--学习进度-->
+		<script type="text/javascript">
+			function formatProcess(date, classInfo, uStatistics){
+				var pshell = document.getElementById('Progress-Shell')
+				var dchild = document.createElement("DIV")
+				dchild.setAttribute("class","Progress-Content");
+				var affixDate = "ByDate-"
+				var affix1 = "ByAbility-";
+				var affix2 = "ByClasses-";
+				var affix3 = "ByGrammarClasses-";
+				var affix4 = "ByTypeID-";
+				
+				var content = "";
+				var colNameArray = new Array()
+				colNameArray.push('totalTime')
+				var jstr_member = classInfo['member_list']
+				var jmember = eval('(' + jstr_member + ')');
+				var duration = 0;
+				//for(var i in jmember) {
+				//	var logData = getStudentLog(date, jmember[i].id, 'leaveApp', colNameArray);
+				//	if(logData.hasOwnProperty('totalTime')) {
+				//		duration = duration + Math.round(logData.totalTime / 60);
+				//	}
+				//}
+				content = "<h1>"+ date + "学习进度</h1><table id='Process_table'>";
+				if(duration > 0) {
+					content += '<tr><td>时长:</td><td>' + duration + "分</td></tr>";
+				}
+
+				if(uStatistics.hasOwnProperty(affixDate+date)) {
+					var jstring = uStatistics[affixDate+date]
+					var jObj = eval('(' + jstring + ')');
+					var right = jObj.right
+					var error = jObj.error
+					var total = right + error
+					content += '<tr><td>共完成题目:</td><td>' + total + '题</td><td>正确' + right + '题</td></tr>';
+				}
+				
+				if(uStatistics.hasOwnProperty(affix4+date)) {
+					var jstring = uStatistics[affix4+date]
+					var jObj = eval('(' + jstring + ')');
+					if(jObj.hasOwnProperty("homework")) {
+						var jObj_homework = jObj["homework"]
+						var right = jObj_homework.right
+						var error = jObj_homework.error
+						var total = right + error
+						content += '<tr><td>共完作业:</td><td>' + total + '题</td><td>正确' + right + '题</td></tr>';
+					}
+				}
+
+				content +=  '<tr><td>题目分类:</td></tr>';
+				if(uStatistics.hasOwnProperty(affix1+date)) {
+					var jstring = uStatistics[affix1+date]
+					var dateStatistics = eval('(' + jstring + ')')
+					if(dateStatistics.hasOwnProperty("listen")) {
+						var jObj = dateStatistics.listen
+						content += '<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '听力类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+					if(dateStatistics.hasOwnProperty("speak")) {
+						var jObj = dateStatistics.speak
+						content +='<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '口语类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+					if(dateStatistics.hasOwnProperty("understand")) {
+						var jObj = dateStatistics.understand
+						content += '<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '阅读类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+					if(dateStatistics.hasOwnProperty("spell")) {
+						var jObj = dateStatistics.spell
+						content += '<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '拼写类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+					if(dateStatistics.hasOwnProperty("word")) {
+						var jObj = dateStatistics.word
+						content += '<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '单词类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+					if(dateStatistics.hasOwnProperty("phrase")) {
+						var jObj = dateStatistics.phrase
+						content += '<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '词组类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+					if(dateStatistics.hasOwnProperty("sentence")) {
+						var jObj = dateStatistics.sentence
+						content += '<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '句型类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+					if(dateStatistics.hasOwnProperty("grammar")) {
+						var jObj = dateStatistics.grammar
+						content += '<tr><td>&nbsp;&nbsp;&nbsp;&nbsp;' + '语法类:</td><td>' + '正确'+ jObj.right +  '题</td><td>' + '  错误'+ jObj.error +  '题</td></tr>';
+					}
+				};
+				content+='</table>'
+				dchild.innerHTML = content
+				pshell.appendChild(dchild)
+				//pshell.appendChild(document.createElement("br"))
+				//pshell.appendChild(document.createElement("br"))
+			};
+			function getStudyProgress(classInfo, uStatistics) {
+				var myDate1 = getDateofThePast(oneMonth)
+				var myDate2 = new Date()
+				var s1 = myDate1.getTime();
+				var s2 = myDate2.getTime();
+				var affixDate = "ByDate-"
+				for(var key in uStatistics) {
+					var pos = key.indexOf(affixDate);
+					if(-1 == pos) continue
+					var recoderDate = key.substring(affixDate.length, key.length)
+					var recoder_date = new Date(recoderDate.replace(/\-/g, "/") + ' 00:00:01')
+					var recoder_tick = recoder_date.getTime();
+					if(recoder_tick >= s1 && recoder_tick < s2) {
+						formatProcess(recoderDate, classInfo, uStatistics)
+					}
+				}
+			};
+		</script>
+	</body>
+</html>

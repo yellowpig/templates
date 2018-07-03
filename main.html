@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>微灵果</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0,maximum-scale=1.0, user-scalable=no" charset="utf-8"/>
+	<!--css-->
+	<!--link rel="stylesheet" type="text/css" href="css/style.css"-->
+	<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+	
+	<!--js-->
+	<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+	<script type="text/javascript" src="https://cdn.bootcss.com/json2/20160511/json2.js"></script>
+
+	<!--script type="text/javascript" src="test.js"></script-->
+
+	<script type="text/javascript">
+		function GetQueryString(name)
+		{
+			var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+			var r = window.location.search.substr(1).match(reg);
+			if(r!=null)return  unescape(r[2]); return null;
+		}
+	</script>
+	<script type="text/javascript">
+		$(document).ready(function() {
+			$(".btnBindPage").click(function(){
+				window.location.href = "/bind_student_page?unionid={{unionid}}&role={{role}}&nickname={{nickname}}"
+			});
+			$(".btnPrepareHomework").click(function(){
+				window.location.href = "/class_preparehomework?unionid={{unionid}}&role={{role}}&nickname={{nickname}}"
+			});
+			//家长端
+			if("parents" == '{{role}}') {
+				document.title = "微灵果"
+
+				document.getElementById("main_title").innerHTML="家长端"
+
+				var welteacher=document.getElementById("nickname");
+				welteacher.style.display="none"
+				var homewordBtn = document.getElementById("btnPrepareHomework");
+				homewordBtn.style.display = "none"
+				$.get("/get_children?unionid={{unionid}}&role={{role}}&nickname={{nickname}}", function(data, status) {
+					var jData = JSON.parse(data)
+					var children_div = document.getElementById("children");
+					for(var i in jData) {
+						document.getElementById("welparent_null").style.display="none"
+
+						//添加列表中箭头按钮
+						newListBtn=document.createElement("div");
+						newListBtn.id = jData[i].id
+						newListBtn.title = jData[i].name
+						newListBtn.setAttribute("class","sl_btn cl_btn");
+						children_div.appendChild(newListBtn);
+
+						//添加内容
+						var uh = jData[i]["homework_user"]
+						var th = jData[i]["homework_total"]
+						console.log(uh, th);
+						newList = document.createElement("div");
+						console.log(jData[i].id)
+						newList.setAttribute("class","content")
+						if(0 == jData[i].sex) {
+							newList.innerHTML = "<table class='stu_table'><tr><td width='100px'>"+jData[i].name+"</td><td>男生</td><td>作业:"+uh+"/"+th+"</td></tr></table>";
+						}
+						else {
+							newList.innerHTML = "<table class='stu_table'><tr><td width='100px'"+jData[i].name+"</td><td>女生</td><td>作业:"+uh+"/"+th+"</td></tr></table>";
+						}
+
+						newListBtn.addEventListener("click", function() {
+							window.location.href = "/user_page?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&uid="+this.id+"&uname="+this.title
+						});
+						children_div.appendChild(newList);
+						//children_div.appendChild(document.createElement("br"))
+					}
+				});
+			}
+			//教师端
+			if("teacher" == '{{role}}') {
+				document.title = "微灵果"
+				var class_member_map = new Map();
+				var btnBindPage = document.getElementById("btnBindPage"); 
+				btnBindPage.style.display = "none"
+				document.getElementById("welparent_null").style.display="none"
+					//已绑定学生-显示教师管理页
+					$.get("/get_classes?unionid={{unionid}}&role={{role}}&nickname={{nickname}}", function(data, status) {
+						var jData = JSON.parse(data)
+						/****测试数据
+						jData=[
+						{id:1,name:"三年一班",start_year:2016,member:10,outlineName:"人教版"},
+						{id:2,name:"三年二班",start_year:2015,member:10,outlineName:"人教版"},
+						{id:3,name:"四年一班",start_year:2017,member:10,outlineName:"人教版"},
+						{id:3,name:"四年一班",start_year:2017,member:10,outlineName:"人教版"},
+						{id:3,name:"四年一班",start_year:2017,member:10,outlineName:"人教版"}
+						]
+						****/
+
+						var classes_div = document.getElementById("classes"); 
+						for(var i in jData) {
+							newStudentList = document.createElement("div");
+							console.log(jData[i].id)
+							newStudentList.setAttribute("class","studentlist");  
+							newStudentList.id = jData[i].id
+							class_member_map.set(jData[i].id, jData[i].member)
+						
+							newStudentList.addEventListener("click", function() {
+								var mc = class_member_map.get(this.id)
+								console.log(this.id, "onclick", mc)
+								window.location.href = "/class_page?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&cid="+this.id+"&cname="+jData[i].name+"&membercount="+mc
+							});
+							classes_div.appendChild(newStudentList);
+
+							//添加列表中箭头按钮
+							newListBtn=document.createElement("div");
+							newListBtn.setAttribute("class","sl_btn");
+							newStudentList.appendChild(newListBtn);
+
+							//添加列表中文字
+							newTable=document.createElement("table");
+							console.log("create table.")  
+							newTable.innerHTML="<tr><td width='130px'>"+jData[i].name+"</td><td>("+jData[i].start_year+"级)</td><td>"+jData[i].member+"人</td></tr><tr><td colspan='3'>"+jData[i].outlineName+"</td></tr>"
+							newStudentList.appendChild(newTable);	
+						}
+					})
+				}
+			});
+		</script>
+	</head>
+	<body>
+		<div class="mainContainer homepage_mainbackground">
+				<div class="header" id="main_title">
+					微灵果-教师管理
+				</div>
+				<div class="Teacher_welcome" id="welparent_null">家长您好，暂无绑定学生</div>
+				<div id="nickname" class="nickname"><span>{{nickname}}&emsp;&emsp;老师您好</span>
+				</div>
+				<div id="children" style="height: auto; width: device-width;">
+				</div>
+				<div id="classes" style="height: auto; width: device-width;">
+				</div>
+				<br><br>
+				<div class="footer">
+					<button id="btnPrepareHomework" class="btnPrepareHomework">布置作业</button>
+					<button id="btnBindPage" class="btnBindPage">绑定学生</button>
+				</div>
+		</div>
+	</body>
+	</html>

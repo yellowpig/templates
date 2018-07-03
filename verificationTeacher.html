@@ -1,0 +1,55 @@
+<html>
+	<head>
+		<title>微灵果</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0,maximum-scale=1.0, user-scalable=no" charset="utf-8"/>
+
+		<!--css-->
+		<!--link rel="stylesheet" type="text/css" href="css/style.css"-->
+		<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+
+		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+		<script type="text/javascript" src="https://cdn.bootcss.com/json2/20160511/json2.js"></script>
+		<script type="text/javascript">
+			function GetQueryString(name)
+			{
+				 var reg = new RegExp("(^|&)"+ name +"=([^&]*)(&|$)");
+				 var r = window.location.search.substr(1).match(reg);
+				 if(r!=null)return  unescape(r[2]); return null;
+			}
+		</script>
+		<script type="text/javascript">
+			$(document).ready(function() {
+			   $(".btnBind").click(function(){
+					var sid = document.getElementById("sid"); 
+					var spw = document.getElementById("spw"); 
+				  $.get("/bind_teacher?unionid={{unionid}}&role={{role}}&nickname={{nickname}}&sex={{sex}}"+"&sid="+sid.value+"&spw="+spw.value, function(data, status){
+					console.log(typeof(data), data)
+					var jData = JSON.parse(data)
+					if (jData.ret) {
+						window.location.href = "/wxlogin_main?unionid={{unionid}}&role={{role}}&nickname={{nickname}}"
+					}
+					else {
+						alert(jData.msg)
+					}
+				  });
+			   });
+			});
+		</script>
+	</head>
+	<body>
+		<div class="mainContainer homepage_mainbackground">
+			<div class="header">登录</div>
+			<div class="Teacher_welcome">老师您好，登录需要通过微信识别码和微信校验码验证，请输入。</div>
+
+			<form id="Parent_input">
+				<label for="sid">微信识别码：</label><br/>
+				<input id='sid'/><br/>
+				<label for="spw">微信校验码：</label><br/>
+				<input id='spw'/><br/>
+			</form>
+			<div class="footer">
+				<button class="btnBind">绑定登录</button>
+			</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,417 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0,maximum-scale=1.0, user-scalable=no" charset="utf-8"/>
+
+		<!--css-->
+		<!--link rel="stylesheet" type="text/css" href="css/style.css"-->
+		<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='style.css')}}">
+
+		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.0.js"></script>
+		<script type="text/javascript" src="https://cdn.bootcss.com/json2/20160511/json2.js"></script>	
+		<title>微灵果</title>
+		<script>
+			$.ajaxSetup({
+				async : false
+			});
+			
+			var last = Date.now();
+			var classElementMap = new Map();
+			var classOutlineMap = new Map();
+			var OutlineGradeMap = new Map();
+			var OutlineUnitMap = new Map();
+			var currentOutlineName = '';
+			
+			function initOutline() {
+				var grade1 = new Array();
+				grade1.push("一年级 上学期");
+				grade1.push("一年级 下学期");
+				grade1.push("二年级 上学期");
+				grade1.push("二年级 下学期");
+				grade1.push("三年级 上学期");
+				grade1.push("三年级 下学期");
+				grade1.push("四年级 上学期");
+				grade1.push("四年级 下学期");
+				grade1.push("五年级 上学期");
+				grade1.push("五年级 下学期");
+				grade1.push("六年级 上学期");
+				grade1.push("六年级 下学期");
+				
+				var grade3 = new Array();
+				grade3.push("三年级 上学期");
+				grade3.push("三年级 下学期");
+				grade3.push("四年级 上学期");
+				grade3.push("四年级 下学期");
+				grade3.push("五年级 上学期");
+				grade3.push("五年级 下学期");
+				grade3.push("六年级 上学期");
+				grade3.push("六年级 下学期");
+				
+				var grade2 = new Array();
+				grade2.push("新概念英语1");
+				grade2.push("新概念英语2");
+				
+				OutlineGradeMap.set("人教版新起点一年级起点", grade1);
+				OutlineGradeMap.set("人教版三年级起点(PEP)", grade3);
+				OutlineGradeMap.set("外研社三年级起点新标准", grade3);
+				OutlineGradeMap.set("外研社三年级起点(Join in)", grade3);
+				OutlineGradeMap.set("教育科学出版社三年级起点", grade3);
+				OutlineGradeMap.set("朗文外研社新概念英语", grade2);
+				
+				var unit6 = new Array();
+				unit6.push("一单元");
+				unit6.push("二单元");
+				unit6.push("三单元");
+				unit6.push("四单元");
+				unit6.push("五单元");
+				unit6.push("六单元");
+				
+				var unit7 = new Array();
+				unit7.push("一单元");
+				unit7.push("二单元");
+				unit7.push("三单元");
+				unit7.push("四单元");
+				unit7.push("五单元");
+				unit7.push("六单元");
+				unit7.push("七单元");
+				
+				var unit10 = new Array();
+				unit10.push("一单元");
+				unit10.push("二单元");
+				unit10.push("三单元");
+				unit10.push("四单元");
+				unit10.push("五单元");
+				unit10.push("六单元");
+				unit10.push("七单元");
+				unit10.push("八单元");
+				unit10.push("九单元");
+				unit10.push("十单元");
+				
+				var unit_xingainian = new Array();
+				for(j = 1; j < 144; j++) {
+					unit_xingainian.push("Lesson "+j);
+				}
+				
+				OutlineUnitMap.set("人教版新起点一年级起点", unit6);
+				OutlineUnitMap.set("人教版三年级起点(PEP)", unit6);
+				OutlineUnitMap.set("外研社三年级起点新标准", unit10);
+				OutlineUnitMap.set("外研社三年级起点(Join in)", unit6);
+				OutlineUnitMap.set("教育科学出版社三年级起点", unit7);
+				OutlineUnitMap.set("朗文外研社新概念英语", unit_xingainian);
+			}
+
+			//获取当前时间
+			function getDate(){
+				var date=new Date();
+				this.year=date.getFullYear();
+				this.month=date.getMonth();
+				this.day=date.getDay();
+				console.log("当前时间："+this.year+this.month+this.day);
+				return {year:this.year,month:this.month,day:this.day}
+			}
+			
+			function select_grade_onChange() {
+				if("朗文外研社新概念英语" == currentOutlineName) {
+					var select_grade = document.getElementById("select_grade");
+					var select_value = select_grade.options[select_grade.selectedIndex].value;
+					if(1 == select_value) {
+						var select_unit = document.getElementById("select_unit");
+						select_unit.options.length = 0
+						var unitArray = OutlineUnitMap.get(currentOutlineName);
+						for(j = 0; j < unitArray.length; j++) {
+							var varItem = new Option(unitArray[j], j+1);
+							select_unit.options.add(varItem);
+						}
+					}
+					else if(2 == select_value) {
+						var select_unit = document.getElementById("select_unit");
+						select_unit.options.length = 0
+						var unitArray = OutlineUnitMap.get(currentOutlineName);
+						for(j = 0; j < 96; j++) {
+							var varItem = new Option(unitArray[j], j+1);
+							select_unit.options.add(varItem);
+						}
+					}
+				}
+			}
+			
+			function changeState(elements, state) {
+				for(j = 0; j < elements.length; j++) {
+					elements[j].disabled = state;
+				}
+			}
+			
+			function homework_group_change() {
+				console.log("选择布置作业状态");
+				var noHomework = document.getElementById("noHomework");
+				var autoHomework = document.getElementById("autoHomework");
+				var manualHomework = document.getElementById("manualHomework");
+				if(noHomework.checked) {
+					document.getElementById("btnHomework").innerHTML = "确&nbsp;认";
+					changeState(window.stateElement, "disabled");
+				}
+				else if(autoHomework.checked) {
+					document.getElementById("btnHomework").innerHTML = "确&nbsp;认";
+					changeState(window.stateElement, "disabled");
+				}
+				else if(manualHomework.checked) {
+					document.getElementById("btnHomework").innerHTML = "发&nbsp;布";
+					changeState(window.stateElement, "");
+				}
+			}
+			
+			$(document).ready(function() {
+				initOutline();
+
+				var getNowDate=getDate();
+				var writeDate=document.getElementById("getDate");
+				writeDate.innerHTML="名称："+getNowDate.year+"年"+getNowDate.month+"月"+getNowDate.day+"日作业";
+				
+				var stateElement = new Array();
+				stateElement.push(document.getElementById("select_grade"));
+				stateElement.push(document.getElementById("select_unit"));
+				stateElement.push(document.getElementById("select_question_type"));
+				stateElement.push(document.getElementById("select_question_count"));
+				//stateElement.push(document.getElementById("btnHomework"));
+				
+				$.get("/get_classes?unionid={{unionid}}&role={{role}}&nickname={{nickname}}", function(data, status) {
+					var jData = JSON.parse(data)
+					//测试数据
+					//jData=[
+					//{id:1,name:"三年一班",start_year:2016,member:10,outlineName:"朗文外研社新概念英语"},
+					//{id:2,name:"三年二班",start_year:2015,member:10,outlineName:"人教版"}
+					//]
+
+					var classes_div = document.getElementById("classes_span");
+					
+					var classIDArray = new Array();
+					var classElementArray = new Array();
+					classElementMap.clear();
+					classOutlineMap.clear();
+					
+					for(var i in jData) {
+						newChkbox = document.createElement("input");
+						newChkbox.type = "radio"
+						newChkbox.name = "class_radio"
+						newChkbox.id = jData[i].id
+						newChkbox.style = "float:left;margin-top:5px;"
+						
+						classIDArray.push(jData[i].id)
+						classElementArray.push(newChkbox);
+						classElementMap.set(jData[i].id, newChkbox);
+						classOutlineMap.set(jData[i].id, jData[i].outlineName)
+						
+						newChkbox.addEventListener("click", function() {
+							if(classOutlineMap.has(this.id)) {
+								var outLineName = classOutlineMap.get(this.id);
+								currentOutlineName = outLineName;
+								console.log("click class", this.id, currentOutlineName)
+								
+								var select_grade = document.getElementById("select_grade");
+								select_grade.options.length = 0
+								var gradeArray = OutlineGradeMap.get(currentOutlineName);
+								for(j = 0; j < gradeArray.length; j++) {
+									if(8 == gradeArray.length) {
+										var varItem = new Option(gradeArray[j], j+1+4);
+										select_grade.options.add(varItem);
+									}
+									else {
+										var varItem = new Option(gradeArray[j], j+1);
+										select_grade.options.add(varItem);
+									}
+								}
+								
+								var select_unit = document.getElementById("select_unit");
+								select_unit.options.length = 0
+								var unitArray = OutlineUnitMap.get(currentOutlineName);
+								for(j = 0; j < unitArray.length; j++) {
+									var varItem = new Option(unitArray[j], j+1);
+									select_unit.options.add(varItem);
+								}
+							}
+						});
+						classes_div.appendChild(newChkbox);
+						
+						label = document.createElement("label");
+						label.setAttribute("for",jData[i].id);
+						label.innerHTML="<table style='margin-left:30px;margin-bottom:10px'><tr><td style='width:200px'>"+jData[i].name+"("+jData[i].start_year+"级)</td><td>"+jData[i].member+"人</td></tr><tr><td>"+jData[i].outlineName+"</td></tr></table>";
+						//label.innerHTML = jData[i].name + "  (" + jData[i].start_year + "级)" + "&nbsp;&nbsp;&nbsp;&nbsp;"+jData[i].member+"人<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + jData[i].outlineName;
+
+						classes_div.appendChild(label);
+						//classes_div.appendChild(document.createElement("br"))
+					}
+					
+					//if(classElementArray.length > 0) {
+					//	var theFirst = classElementArray[0];
+					//	console.log(theFirst);
+					//	var radioJQuery = "input[@type=radio][id="+classIDArray[0]+"]";
+					//	$(radioJQuery).prop("checked",true);
+					//}
+				});
+				
+				$(".btnHomework").click(function() {
+					console.log("发布");
+					var now = Date.now();
+					if((now - last) > 5000) {
+						last = now;
+						console.log(now);
+						var classes_div = document.getElementById("classes_span");
+						var chkboxs = classes_div.getElementsByTagName("input")
+						var class_array = new Array()
+						for(var i=0; i<chkboxs.length;i++) {
+							chkbox = chkboxs[i]
+							if(chkbox.checked) {
+								class_array.push(chkbox.id)
+							}
+						}
+						if(0 == class_array.length) {
+							alert("您还没有勾选班级")
+						}
+						else {
+							var class_jdata = JSON.stringify(class_array)
+							var noHomework = document.getElementById("noHomework");
+							var autoHomework = document.getElementById("autoHomework");
+							var manualHomework = document.getElementById("manualHomework");
+							if(noHomework.checked) {
+								$.get("/class_homework_mode?unionid={{unionid}}&role={{role}}&nickname={{nickname}}"+"&hmode=1"+"&class_list="+class_jdata, function(data, status){
+									console.log(typeof(data), data)
+									var jData = JSON.parse(data)
+									alert(jData.msg)
+								});
+							}
+							else if(autoHomework.checked) {
+								$.get("/class_homework_mode?unionid={{unionid}}&role={{role}}&nickname={{nickname}}"+"&hmode=2"+"&class_list="+class_jdata, function(data, status){
+									console.log(typeof(data), data)
+									var jData = JSON.parse(data)
+									alert(jData.msg)
+								});
+							}
+							else if(manualHomework.checked) {
+								$.get("/class_homework_mode?unionid={{unionid}}&role={{role}}&nickname={{nickname}}"+"&hmode=3"+"&class_list="+class_jdata, function(data, status){
+									console.log(typeof(data), data)
+									var jData = JSON.parse(data)
+									if (jData.ret) {
+										var gradeCtl = document.getElementById("select_grade");
+										var grade = Number(gradeCtl.options[gradeCtl.selectedIndex].value);
+										var unitCtl = document.getElementById("select_unit");
+										var unit = Number(unitCtl.options[unitCtl.selectedIndex].value);
+										var qtypeCtl = document.getElementById("select_question_type");					
+										var qtype = Number(qtypeCtl.options[qtypeCtl.selectedIndex].value);
+										var qcountCtl = document.getElementById("select_question_count");
+										var qcount = Number(qcountCtl.options[qcountCtl.selectedIndex].value);
+										
+										if("朗文外研社新概念英语" == currentOutlineName) {
+											if(2 == grade) {
+												unit = unit + 143;
+											}
+											grade = Math.floor(unit / 20);
+											unit = unit % 20;
+										}
+										
+										$.get("/class_homework?unionid={{unionid}}&role={{role}}&nickname={{nickname}}"+"&grade="+grade+"&unit="+unit+"&qtype="+qtype+"&qcount="+qcount+"&class_list="+class_jdata, function(data, status){
+											var jData = JSON.parse(data)
+											alert(jData.msg)
+										});
+									}
+									else {
+										alert(jData.msg)
+									}
+								});
+							};
+						};
+					}
+					else {
+						alert("计算中 请等待")
+					}
+			    });
+			   
+				window.stateElement = stateElement;
+				document.getElementById("btnHomework").innerHTML = "确&nbsp;认";
+				changeState(window.stateElement, "disabled");
+			});
+		</script>
+	</head>
+	<body>
+		<div class="mainContainer homework_mainbackground">
+			<div class="header">
+				布置作业
+			</div>
+			<div class="content">
+				<span id="getDate"></span>
+			</div>
+			<div class="content">
+				<form>
+					<input id="noHomework" type="radio" name="homework_group" onchange="homework_group_change()"/><label for="noHomework">无作业</label>
+					<input id="autoHomework" type="radio" name="homework_group" onchange="homework_group_change()" checked="checked"/><label for="autoHomework">自动布置</label>
+					<input id="manualHomework" type="radio" name="homework_group" onchange="homework_group_change()"/><label for="manualHomework">手动布置</label>
+				</form>
+			</div>
+			<div  class="content">
+				<form id="classes">
+					<style type="text/css">  
+						span.item input{vertical-align:middle;}
+						span.item label{vertical-align:middle;}
+					</style>
+					<span id="classes_span" class=item></span>
+				</form>
+			</div>
+			<div class="content" style="border-bottom: 0px ">
+				<form id="homework_form">
+					<label>选教材年级</label>
+					<select id="select_grade" name="select_grade" class="choose_select" onchange="select_grade_onChange()">
+						<option value=1>一年级 上学期</option>
+						<option value=2>一年级 下学期</option>
+						<option value=3>二年级 上学期</option>
+						<option value=4>二年级 下学期</option>
+						<option value=5>三年级 上学期</option>
+						<option value=6>三年级 下学期</option>
+						<option value=7>四年级 上学期</option>
+						<option value=8>四年级 下学期</option>
+						<option value=9>五年级 上学期</option>
+						<option value=10>五年级 下学期</option>
+						<option value=11>六年级 上学期</option>
+						<option value=12>六年级 下学期</option>
+					</select>
+					<br />
+					<label>选教材单元</label>
+					<select id="select_unit" name="select_unit" class="choose_select">
+						<option value=1>一单元</option>
+						<option value=2>二单元</option>
+						<option value=3>三单元</option>
+						<option value=4>四单元</option>
+						<option value=5>五单元</option>
+						<option value=6>六单元</option>
+					</select>
+					<br />
+					<label>选类型倾向</label>
+					<select id="select_question_type" name="select_question_type" class="choose_select">    
+						<option value=0>平衡</option>
+						<option value=1>偏重听写</option>
+						<option value=2>偏重跟读</option>
+						<option value=3>偏重朗读</option>
+						<option value=4>偏重背诵</option>
+					</select>
+					<br />
+					<label>选题目数量</label>
+					<select id="select_question_count" name="select_question_count" class="choose_select">    
+						<option value=5>5道题</option>
+						<option value=6>6道题</option>
+						<option value=7>7道题</option>
+						<option value=8>8道题</option>
+						<option value=9>9道题</option>
+						<option value=10>10道题</option>
+						<option value=11>11道题</option>
+						<option value=12>12道题</option>
+						<option value=13>13道题</option>
+						<option value=14>14道题</option>
+						<option value=15>15道题</option>
+					</select>
+					<br />
+					<br />
+				</form>
+			</div>
+			<div class="footer">
+				<button id="btnHomework" class="btnHomework" align:center">发&nbsp;布</button>
+			</div>
+		</div>
+	</body>
+</html>
